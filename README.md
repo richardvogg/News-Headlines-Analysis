@@ -1,5 +1,5 @@
 # News-Headlines-Analysis
-I did this analysis two years ago, but really like playing around with the functions I wrote, especially the word frequency tracking plots.
+I did this analysis two years ago, but really like playing around with the functions I wrote, especially the word frequency tracking plots. I guess it would be worth spending some time in speeding up the code, and avoiding the for-loops, but I did not have a lot of free time ultimately.
 Analysis of all the news headlines between 2004 and 2016 of an Australian Newspaper, the dataset is from Kaggle.
 
 When I saw the dataset I tried out four different ideas.
