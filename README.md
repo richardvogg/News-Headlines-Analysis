@@ -10,6 +10,7 @@ The function topx calculates the top x most used words for a given month.
 
 ### Tracking and plotting word frequency throughout time
 Can we see how often the last australian prime ministers were mentioned before, during and after their role as prime minister? In which months does the newspaper write about fires, when about gold?
+![prime ministers](prime_ministers.png)
 
 ### Wordcloud and Sentiments
 Simple wordcloud of the most used words, as well as measuring the number of positive and negative headlines with the afinn sentiment tables.
