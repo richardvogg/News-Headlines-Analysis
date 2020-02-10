@@ -13,7 +13,7 @@ Can we see how often the last australian prime ministers were mentioned before, 
 ![prime ministers](prime_ministers.png)
 
 ### Wordcloud and Sentiments
-Simple wordcloud of the most used words, as well as measuring the number of positive and negative headlines with the afinn sentiment tables.
+Simple wordcloud of the most used words (I would not encourage to use it, as it has a very long runtime), as well as measuring the number of positive and negative headlines with the afinn sentiment tables.
 
 ### Country analysis
 Plotting on a map how often countries across the world were mentioned in the australian newspaper.
