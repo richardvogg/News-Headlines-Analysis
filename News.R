@@ -1,37 +1,37 @@
 
-library("dplyr") #data base
-library("wordcloud") #wordcloud
-
-
+library(dplyr)
+library(wordcloud) #wordcloud
+library(data.table)
+library(ggplot2)
 
 #################
 # load data
 #################
 
-data = read.csv("C:/Richard/Python/News-Dataset/abcnews-date-text.csv",sep=",")
-data$year=substr(data$publish_date,1,4)
-data$month=substr(data$publish_date,5,6)
-data$day=substr(data$publish_date,7,8)
-data$publish_date=NULL
+data <- fread("C:/Richard/R and Python/Kaggle/News-Dataset/abcnews-date-text.csv",sep=",") %>%
+  as.data.frame()
+
+data <- data %>%
+  mutate(year=substr(publish_date,1,4),
+         month=substr(publish_date,5,6),
+         day=substr(publish_date,7,8),
+         publish_date=NULL)
+
 
 
 
 ##################
 # get top words
 ##################
-library("tm") #text mining, used for stopwords
-library("plyr") #data base, count etc.
+
+library(tm) #text mining, used for stopwords
+library(plyr) #data base, count etc.
 
 topx=function(year,month,top)
 {
   test=data[as.numeric(data$year)==year & as.numeric(data$month)==month,]
   
-  words=NULL
-  
-  for(i in 1:(length(test[,1])))
-  {
-    words=c(words,unlist(strsplit(as.character(test$headline_text[i])," ")))
-  }
+  words <- strsplit(test$headline_text," ") %>% unlist()
   
   words=data.frame(words)
   stopwords_en=data.frame(stopwords("english"))
@@ -43,134 +43,85 @@ topx=function(year,month,top)
   counter=as.data.frame(table(words))
   counter=counter[order(-counter$Freq),]
   counter=counter[1:top,]
-  return(counter)
+  
+  
+  g <- ggplot(counter,aes(x=reorder(words,Freq),y=Freq))+
+    geom_bar(stat="identity")+
+    coord_flip()
+  colnames(counter)=c(paste0(year,"-",month),paste0("freq",year,"-",month))
+  return(list(table=counter,plot=g))
 }
 
-output=topx(2003,12,10)
-colnames(output)=c("2003-12","freq2003-12")
-
-for(year in 2004:2016)
-{
-  for(month in 1:12)
-  {
-    new=topx(year,month,10)
-    colnames(new)=c(paste0(year,"-",month),paste0("freq",year,"-",month))
-    output=cbind(output,new)
-  }
-}
+output <- topx(2005,12,10)
+output$plot
+output$table
 
 
 #########################################
 #plot development of word & applications
 #########################################
 
-library("ggplot2") #beautiful plots
-library("reshape2") #beautiful plots (melt)
 
-plotword=function(word)
-{
-  b=NULL
-  for(year in 2004:2016)
-  {
-    for(month in 1:12)
-    {
-      test=data[as.numeric(data$year)==year & as.numeric(data$month)==month,]
-      b=c(b,length(grep(word,test$headline_text)))
-    }
-  }
-  for(month in 1:9)
-  {
-    test=data[as.numeric(data$year)==2017 & as.numeric(data$month)==month,]
-    b=c(b,length(grep(word,test$headline_text)))
-  }
-  return(b)
+plotword2 <- function(word) {
+  output <- data %>% dplyr::group_by(year,month) %>%
+    dplyr::summarise(freq=sum(grepl(word,headline_text)))
+  names(output) <- c("year","month",word)
+  return(output)
 }
 
-
+plotword2("hills")
 
 ###Prime Ministers of Australia
 
-liste=c("howard","rudd","gillard","abbott","turnbull")
+liste=list("chile")
 
-A=data.frame(seq(as.Date("2004/01/01"),by="month",length.out=165))
+#A=data.frame(seq(as.Date("2004/01/01"),by="month",length.out=165))
 
-
-for(item in liste)
-{
-  out=plotword(item)
-  A=cbind(A,out)
-}
-
-colnames(A)=c("date",liste)
-charts=melt(A,id="date")
-names(charts) <- c('x', 'func', 'value')
-g=ggplot() +
-  geom_line(data = charts, aes(x = x, y = value, color = func), size = 2)+
-  xlab("year") +
-  ylab("frequency")
-g+scale_color_manual(values=c("#999999", "#FF0000", "#FF00D0","#0007FF","#09FF00"))
-
-
-
-###interesting results
-
-liste=c("donald","richard")
-
-A=data.frame(seq(as.Date("2004/01/01"),by="month",length.out=165))
-
-
-for(item in liste)
-{
-  out=plotword(item)
-  A=cbind(A,out)
-}
-
-colnames(A)=c("date",liste)
-charts=melt(A,id="date")
-names(charts) <- c('x', 'func', 'value')
-g=ggplot() +
-  geom_line(data = charts, aes(x = x, y = value, color = func), size = 2)+
-  xlab("year") +
-  ylab("frequency")
-g+scale_color_manual(values=c("#FF0000", "#09FF00"))
+l <- lapply(liste,plotword2)
+do.call(cbind,l) %>%
+  select(-matches("\\d$")) %>%
+  mutate(date=as.Date(paste0(year,"-",month,"-01")),
+         month=NULL,
+         year=NULL) %>%
+  tidyr::pivot_longer(-date,values_to="Freq",names_to="words") %>%
+  ggplot(aes(x = date, y = Freq, color = words)) +
+    geom_line(size = 1)+
+    xlab("year") +
+    ylab("frequency")+
+    scale_color_manual(values=c("#999999", "#FF0000", "#FF00D0","#0007FF","#09FF00"))
 
 
 #################
 # make wordcloud
 #################
 
-clean_corpus=function(data)
-{
-  words=NULL
-  for(i in 1:(length(data[,1])))
-  {
-    words=c(words,unlist(strsplit(as.character(data$headline_text[i])," ")))
-  }
-  words <- Corpus(VectorSource(words))
-  words = tm_map(words, removeWords, stopwords("english"))
-  
+clean_corpus <- function(data) {
   toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
-  words = tm_map(words, toSpace,";")
-  words = tm_map(words, toSpace,":")
-  words = tm_map(words, toSpace, "'")
+  words <- strsplit(data$headline_text," ") %>% unlist() %>%
+    VectorSource() %>% Corpus() %>%
+    tm_map(tm::removeWords, stopwords("english")) %>%
+    tm_map(toSpace,";") %>%
+    tm_map(toSpace,":") %>%
+    tm_map(toSpace, "'")
   return(words)
 }
 
 
 wordcloud_fun=function(corpus)
 {
-  dtm <- TermDocumentMatrix(corpus)
-  m <- as.matrix(dtm)
-  v <- sort(rowSums(m),decreasing=TRUE)
+  v <- TermDocumentMatrix(corpus) %>%
+    as.matrix() %>%
+    {sort(rowSums(.),decreasing=TRUE)}
   d <- data.frame(word = names(v),freq=v)
-  head(d, 10)
-  
-  wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+  rm(v)
+  wordcloud::wordcloud(words = d$word, freq = d$freq, min.freq = 1,
             max.words=200, random.order=FALSE, rot.per=0.3, 
             colors=brewer.pal(12, "Dark2"))
+  
 }
 
-my_corpus=clean_corpus(data)
+my_corpus <- data %>% filter(year==2015,month=="01") %>% clean_corpus()
+
 wordcloud_fun(my_corpus)
 
 
