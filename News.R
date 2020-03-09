@@ -132,53 +132,30 @@ wordcloud_fun(my_corpus)
 library(tidytext)
 library(ggplot2)
 library(lubridate) #month and year function
-library(data.table) #for the inner join
+library(stringr)
 
 pos_neg = get_sentiments("afinn")
-pos_neg$X1=factor(pos_neg$word)
-pos_neg$word=NULL
-pos_neg=data.table(pos_neg,key="X1")
 
+words <- data %>% 
+  mutate(title_id=row_number()) %>%
+  unnest_tokens(word,headline_text)
 
-result=data.frame(matrix(ncol = 2, nrow = 0))
+sentiments <- words %>% 
+  left_join(pos_neg,by="word") %>%
+  group_by(year,month,day) %>%
+  summarise(count=n_distinct(title_id),
+            total_sentiment=sum(value,na.rm=T),
+            neg=sum(value[value<0],na.rm=T),
+            pos=sum(value[value>0],na.rm=T)) %>%
+  mutate(date=as.Date(paste0(year,"-",month,"-",day)))
 
-for(year in 2004:2016)
-{
-  for(month in 1:12)
-  {
-    test=data.frame(data[as.numeric(data$year)==year & as.numeric(data$month)==month,1])
-    h=apply(test,MARGIN=1,function(x) strsplit(x," "))
-    h1=unlist(h,recursive = F)
-    names(h1)=rep(1,length(h1))
-    score=NULL
-    for(i in 1:length(h1))
-    {
-      h2=data.table(data.frame(h1[i]),key="X1")[pos_neg,nomatch=0]
-      score=c(score,sum(h2$score))
-    }
-    out=data.frame(test,score)
-    out$year=year
-    out$month=month
-    
-    result=rbind(result,out[,2:4])
-  }
-  print(year)
-}
+#Analyze
 
-h=NULL
-h=aggregate(score ~ year + month,data=result,mean)
-colnames(h)=c("year","month","mean")
-h$date=as.Date(paste0(h$year,"-",h$month,"-01"))
-h$pos=aggregate(score ~ year + month, data=result, function(x) length(x[x>0]))
-h$neg=aggregate(score ~ year + month, data=result, function(x) length(x[x<0]))
-h$pos=h$pos$score
-h$neg=h$neg$score
+ggplot(data=sentiments,aes(x=date,y=count))+geom_line()
 
-
-g1=ggplot(h, aes(x=date,y=mean))+geom_line(size=2)
-
-g2=ggplot(h, aes(x=date))+geom_line(aes(y=pos$score),size=2,colour="#00ff00")+
-  geom_line(aes(y=neg$score),size=2,colour="#ff0000")
+ggplot(data=sentiments, aes(x=date))+
+  geom_line(aes(y=pos),size=1,colour="#00ff00")+
+  geom_line(aes(y=-neg),size=1,colour="#ff0000")
 
 
 
