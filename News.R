@@ -18,14 +18,34 @@ data <- data %>%
          publish_date=NULL)
 
 
+#################
+#Theme for plots
+#################
 
+theme <- theme(axis.title.x = element_text(face = "bold", size = 10),
+               axis.text.x  = element_text(angle = 0, face = "bold",
+                                           colour = "black", size = 8),
+               axis.title.y = element_text(face = "bold", size = 10),
+               axis.text.y = element_text(angle = 0, 
+                                          face = "bold", 
+                                          colour = "black", 
+                                          hjust = 0.5,
+                                          size = 8),
+               plot.title = element_text(lineheight = .8, face = "bold"),
+               panel.grid.major = element_line(colour = 'grey82'),
+               panel.grid.minor = element_line(colour = NA),
+               panel.background = element_rect(fill = 'white'),
+               strip.background = element_rect(fill = 'white'),
+               strip.text = element_text(size = 8, face = "bold"),
+               legend.title = element_text(colour = "black", size = 9, face = "bold"),
+               legend.text = element_text(size = 8, face = "bold"),
+               plot.margin = unit(c(1.5,1,1,1), "lines"))
 
 ##################
 # get top words
 ##################
 
 library(tm) #text mining, used for stopwords
-library(plyr) #data base, count etc.
 
 topx=function(year,month,top)
 {
@@ -47,7 +67,7 @@ topx=function(year,month,top)
   
   g <- ggplot(counter,aes(x=reorder(words,Freq),y=Freq))+
     geom_bar(stat="identity")+
-    coord_flip()
+    coord_flip()+theme
   colnames(counter)=c(paste0(year,"-",month),paste0("freq",year,"-",month))
   return(list(table=counter,plot=g))
 }
@@ -73,13 +93,14 @@ plotword2("hills")
 
 ###Prime Ministers of Australia
 
-liste=list("chile")
+liste=list("chile","germany")
 
 #A=data.frame(seq(as.Date("2004/01/01"),by="month",length.out=165))
 
 l <- lapply(liste,plotword2)
 do.call(cbind,l) %>%
   select(-matches("\\d$")) %>%
+  ungroup() %>%
   mutate(date=as.Date(paste0(year,"-",month,"-01")),
          month=NULL,
          year=NULL) %>%
@@ -88,7 +109,8 @@ do.call(cbind,l) %>%
     geom_line(size = 1)+
     xlab("year") +
     ylab("frequency")+
-    scale_color_manual(values=c("#999999", "#FF0000", "#FF00D0","#0007FF","#09FF00"))
+    scale_color_manual(values=c("#999999", "#FF0000", "#FF00D0","#0007FF","#09FF00"))+
+  theme
 
 
 #################
@@ -120,7 +142,7 @@ wordcloud_fun=function(corpus)
   
 }
 
-my_corpus <- data %>% filter(year==2015,month=="01") %>% clean_corpus()
+my_corpus <- data %>% filter(year==2014,month=="07") %>% clean_corpus()
 
 wordcloud_fun(my_corpus)
 
@@ -151,11 +173,17 @@ sentiments <- words %>%
 
 #Analyze
 
-ggplot(data=sentiments,aes(x=date,y=count))+geom_line()
+ggplot(data=sentiments,aes(x=date,y=count))+geom_line()+theme
 
-ggplot(data=sentiments, aes(x=date))+
+# sentiments %>% group_by(year,month) %>%
+#   summarise(date=max(date),
+#             neg=sum(neg),
+#             pos=sum(pos)) %>%
+sentiments %>% filter(year==2014,month=='07') %>%
+ggplot(aes(x=date))+
   geom_line(aes(y=pos),size=1,colour="#00ff00")+
-  geom_line(aes(y=-neg),size=1,colour="#ff0000")
+  geom_line(aes(y=-neg),size=1,colour="#ff0000")+
+  theme
 
 
 
