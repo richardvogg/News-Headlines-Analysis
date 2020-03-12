@@ -69,7 +69,7 @@ topx=function(year,month,top) {
   return(list(table=counter,plot=g))
 }
 
-output <- topx(2006,12,10)
+output <- topx(2014,01,10)
 output$plot
 output$table
 
@@ -86,11 +86,11 @@ plotword2 <- function(word) {
   return(output)
 }
 
-plotword2("hills")
+plotword2("richard")
 
 ###Prime Ministers of Australia
 
-liste=list("chile","germany")
+liste=list("howard","rudd","gillard","abbott","turnbull")
 
 #A=data.frame(seq(as.Date("2004/01/01"),by="month",length.out=165))
 
@@ -98,6 +98,7 @@ l <- lapply(liste,plotword2)
 do.call(cbind,l) %>%
   select(-matches("\\d$")) %>%
   ungroup() %>%
+  #filter(year>=2010) %>%
   mutate(date=as.Date(paste0(year,"-",month,"-01")),
          month=NULL,
          year=NULL) %>%
@@ -126,17 +127,15 @@ clean_corpus <- function(data) {
 }
 
 
-wordcloud_fun=function(corpus)
-{
+wordcloud_fun=function(corpus) {
   v <- TermDocumentMatrix(corpus) %>%
     as.matrix() %>%
     {sort(rowSums(.),decreasing=TRUE)}
   d <- data.frame(word = names(v),freq=v)
   rm(v)
-  wordcloud::wordcloud(words = d$word, freq = d$freq, min.freq = 1,
-            max.words=200, random.order=FALSE, rot.per=0.3, 
+  wordcloud::wordcloud(words = d$word, freq = d$freq, min.freq = 5,
+            max.words=100, random.order=FALSE, rot.per=0.3, 
             colors=brewer.pal(12, "Dark2"))
-  
 }
 
 my_corpus <- data %>% filter(year==2014,month=="07") %>% clean_corpus()
@@ -149,8 +148,6 @@ wordcloud_fun(my_corpus)
 #######################
 
 library(tidytext)
-library(ggplot2)
-library(lubridate) #month and year function
 library(stringr)
 
 pos_neg = get_sentiments("afinn")
@@ -170,13 +167,14 @@ sentiments <- words %>%
 
 #Analyze
 
-ggplot(data=sentiments,aes(x=date,y=count))+geom_line()+theme
+sentiments %>% filter(year>2016) %>%
+  ggplot(aes(x=date,y=count))+geom_line()#+theme
 
 # sentiments %>% group_by(year,month) %>%
 #   summarise(date=max(date),
 #             neg=sum(neg),
 #             pos=sum(pos)) %>%
-sentiments %>% filter(year==2014,month=='07') %>%
+sentiments %>% filter(year==2014,month%in%c('07','08')) %>%
 ggplot(aes(x=date))+
   geom_line(aes(y=pos),size=1,colour="#00ff00")+
   geom_line(aes(y=-neg),size=1,colour="#ff0000")+
@@ -189,36 +187,38 @@ ggplot(aes(x=date))+
 #country analysis
 ##################
 
-library(plyr)
-library(ggplot2)
-library(stringr) 
 
+world <- map_data("world")
+world <- world[world$region!="Antarctica",]
 
-world=map_data("world")
-world=world[world$region!="Antarctica",]
+countries=world$region %>% unique() %>% {data.frame(region=.)} %>%
+  mutate(x=tolower(region),
+         x=paste0(" ",x," "),
+         x=gsub("usa","us",x))
 
-countries=world$region
-countries=countries[!duplicated(countries)]
-countries=data.frame(countries[order(countries)])
-colnames(countries)="region"
-countries$x=tolower(countries$region)
-countries$x=gsub("usa","us",countries$x)
-
-for(i in 1:length(countries$x))
-{
-  countries$count[i]=length(grep(paste0(" ",countries$x[i]," "),data$headline_text))
+countries$count <- 0
+for(i in 1:length(countries$x)) {
+  countries$count[i] <- sum(grepl(countries$x[i], data$headline_text))
+  cat(i)
 }
 
-countries$count[countries$count==0]=1
 
-countries=countries[order(countries$count,decreasing=T),]
-countries[1:10,c(1,3)]
+liste <- as.list(countries$x)
+countries$count <- lapply(liste,function(y) {
+  sum(grepl(y,data$headline_text))
+  cat(y)
+}) %>% unlist()
+countries <- countries %>% mutate(count=ifelse(count==0,1,count))
 
-g=ggplot()
-g=g+geom_map(data=world,map=world, aes(x=long,y=lat,map_id=region))
-g=g + scale_y_continuous(breaks=c()) + scale_x_continuous(breaks=c())
-g=g+labs(fill="# of apperances", title="The world in ABC News", x="", y="")
-g=g + scale_fill_continuous(breaks=c(0,10,100,1000,10000),trans="log",low="#ffff00",high="#ff0000")
-g=g + geom_map(data=countries, map=world,
-             aes(fill=count, map_id=region),colour="grey",size=0.05)
-g
+
+countries %>% arrange(-count) %>% top_n(10,count)
+
+ggplot(data=world)+
+  geom_map(map=world, aes(x=long,y=lat,map_id=region))+
+  scale_y_continuous(breaks=c()) + 
+  scale_x_continuous(breaks=c()) +
+  labs(fill="# of apperances", title="The world in ABC News", x="", y="") +
+  scale_fill_continuous(breaks=c(0,10,100,1000,10000),trans="log",low="white",high="orange")+
+  geom_map(data=countries, map=world,
+             aes(fill=count, map_id=region),col='grey80',size=0.001)+
+  theme
