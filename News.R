@@ -3,6 +3,7 @@ library(dplyr)
 library(wordcloud) #wordcloud
 library(data.table)
 library(ggplot2)
+library(tm) #text mining, used for stopwords
 
 #################
 # load data
@@ -22,33 +23,29 @@ data <- data %>%
 #Theme for plots
 #################
 
-theme <- theme(axis.title.x = element_text(face = "bold", size = 10),
+theme <- theme(axis.title.x = element_blank(),
                axis.text.x  = element_text(angle = 0, face = "bold",
-                                           colour = "black", size = 8),
-               axis.title.y = element_text(face = "bold", size = 10),
+                                           colour = "black", size = 12),
+               axis.title.y = element_blank(),
                axis.text.y = element_text(angle = 0, 
                                           face = "bold", 
                                           colour = "black", 
                                           hjust = 0.5,
-                                          size = 8),
-               plot.title = element_text(lineheight = .8, face = "bold"),
+                                          size = 12),
                panel.grid.major = element_line(colour = 'grey82'),
                panel.grid.minor = element_line(colour = NA),
                panel.background = element_rect(fill = 'white'),
-               strip.background = element_rect(fill = 'white'),
                strip.text = element_text(size = 8, face = "bold"),
                legend.title = element_text(colour = "black", size = 9, face = "bold"),
-               legend.text = element_text(size = 8, face = "bold"),
-               plot.margin = unit(c(1.5,1,1,1), "lines"))
+               legend.text = element_text(size = 8, face = "bold"))
 
 ##################
 # get top words
 ##################
 
-library(tm) #text mining, used for stopwords
 
-topx=function(year,month,top)
-{
+
+topx=function(year,month,top) {
   test=data[as.numeric(data$year)==year & as.numeric(data$month)==month,]
   
   words <- strsplit(test$headline_text," ") %>% unlist()
@@ -67,12 +64,12 @@ topx=function(year,month,top)
   
   g <- ggplot(counter,aes(x=reorder(words,Freq),y=Freq))+
     geom_bar(stat="identity")+
-    coord_flip()+theme
+    coord_flip()+ggtitle(paste0("Most frequent words in ",year,"-",month))+theme
   colnames(counter)=c(paste0(year,"-",month),paste0("freq",year,"-",month))
   return(list(table=counter,plot=g))
 }
 
-output <- topx(2005,12,10)
+output <- topx(2006,12,10)
 output$plot
 output$table
 
